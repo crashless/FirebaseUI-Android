@@ -18,13 +18,13 @@
 
 package com.firebase.ui.auth.ui.phone;
 
-import com.firebase.ui.auth.BuildConfig;
-import com.firebase.ui.auth.testhelpers.CustomRobolectricGradleTestRunner;
+import com.firebase.ui.auth.data.client.CountryListLoadTask;
+import com.firebase.ui.auth.data.model.CountryInfo;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.annotation.Config;
+import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,8 +37,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-@RunWith(CustomRobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 25)
+@RunWith(RobolectricTestRunner.class)
 public class CountryListLoadTaskTests {
     private static final ArrayList<CountryInfo> COUNTRY_LIST = new ArrayList<>();
 
@@ -291,22 +290,22 @@ public class CountryListLoadTaskTests {
         COUNTRY_LIST.add(new CountryInfo(new Locale("", "ZW"), 263));
     }
 
-    private CountryListLoadTask task;
-    private CountryListLoadTask.Listener listener;
+    private CountryListLoadTask mTask;
+    private CountryListLoadTask.Listener mListener;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         // Create task and mock dependencies
-        listener = mock(CountryListLoadTask.Listener.class);
-        task = new CountryListLoadTask(listener);
+        mListener = mock(CountryListLoadTask.Listener.class);
+        mTask = new CountryListLoadTask(mListener);
     }
 
     @Test
     public void testExecute() {
-        task.execute();
+        mTask.execute();
 
         try {
-            final List<CountryInfo> result = task.get();
+            final List<CountryInfo> result = mTask.get();
             Collections.sort(COUNTRY_LIST);
             assertEquals(COUNTRY_LIST, result);
         } catch (InterruptedException e) {
@@ -318,9 +317,9 @@ public class CountryListLoadTaskTests {
 
     @Test
     public void testOnPostExecute_nullListener() {
-        task = new CountryListLoadTask(null);
+        mTask = new CountryListLoadTask(null);
         try {
-            task.onPostExecute(COUNTRY_LIST);
+            mTask.onPostExecute(COUNTRY_LIST);
         } catch (NullPointerException ex) {
             fail("Should not throw NullPointerException");
         }
@@ -328,7 +327,7 @@ public class CountryListLoadTaskTests {
 
     @Test
     public void testOnPostExecute() {
-        task.onPostExecute(COUNTRY_LIST);
-        verify(listener).onLoadComplete(COUNTRY_LIST);
+        mTask.onPostExecute(COUNTRY_LIST);
+        verify(mListener).onLoadComplete(COUNTRY_LIST);
     }
 }

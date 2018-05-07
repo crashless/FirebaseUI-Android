@@ -13,12 +13,6 @@ function find_files {
 chmod -R +wx auth/src/main/res/values-*
 rm -rf auth/src/main/res/values-{he,id}
 
-# Remove all RTL locales (until we fully QA them)
-# [Arabic and Hebrew]
-rm -rf auth/src/main/res/values-ar
-rm -rf auth/src/main/res/values-he
-rm -rf auth/src/main/res/values-iw
-
 # Process each file
 find_files | while read file;
 do
@@ -26,5 +20,10 @@ do
 
     # Remove non-translatable strings
     python $DIR/remove_non_translatable.py $file
+
+    # Fix typography
     python $DIR/fix_typography.py $file
+
+    # Add fui_ prefix
+    python $DIR/add_string_prefix.py $file
 done

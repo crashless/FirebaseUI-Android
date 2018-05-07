@@ -17,31 +17,29 @@
  */
 package com.firebase.ui.auth.ui.phone;
 
-import com.firebase.ui.auth.BuildConfig;
-import com.firebase.ui.auth.testhelpers.CustomRobolectricGradleTestRunner;
+import com.firebase.ui.auth.data.model.PhoneNumber;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.annotation.Config;
+import org.robolectric.RobolectricTestRunner;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(CustomRobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
 public class PhoneNumberTest {
     @Test
-    public void testIsValid_emptyPhone() throws Exception {
+    public void testIsValid_emptyPhone() {
         assertFalse(PhoneNumber.isValid(PhoneNumber.emptyPhone()));
     }
 
     @Test
-    public void testIsValid_nullPhone() throws Exception {
+    public void testIsValid_nullPhone() {
         assertFalse(PhoneNumber.isValid(null));
     }
 
     @Test
-    public void testIsValid_emptyMembers() throws Exception {
+    public void testIsValid_emptyMembers() {
         PhoneNumber invalidPhoneNumber = new PhoneNumber(
                 "",
                 PhoneTestConstants.US_ISO2,
@@ -58,7 +56,7 @@ public class PhoneNumberTest {
     }
 
     @Test
-    public void testIsValid() throws Exception {
+    public void testIsValid() {
         final PhoneNumber validPhoneNumber = new PhoneNumber(
                 PhoneTestConstants.PHONE,
                 PhoneTestConstants.US_ISO2,
@@ -67,17 +65,17 @@ public class PhoneNumberTest {
     }
 
     @Test
-    public void testIsCountryValid_emptyPhone() throws Exception {
+    public void testIsCountryValid_emptyPhone() {
         assertFalse(PhoneNumber.isCountryValid(PhoneNumber.emptyPhone()));
     }
 
     @Test
-    public void testIsCountryValid_nullPhone() throws Exception {
+    public void testIsCountryValid_nullPhone() {
         assertFalse(PhoneNumber.isCountryValid(null));
     }
 
     @Test
-    public void testIsCountryValid_emptyMembers() throws Exception {
+    public void testIsCountryValid_emptyMembers() {
         PhoneNumber invalidPhoneNumber = new PhoneNumber(
                 "",
                 "",
@@ -88,7 +86,7 @@ public class PhoneNumberTest {
     }
 
     @Test
-    public void testIsCountryValid() throws Exception {
+    public void testIsCountryValid() {
         final PhoneNumber validPhoneNumber = new PhoneNumber(
                 "",
                 PhoneTestConstants.US_ISO2,

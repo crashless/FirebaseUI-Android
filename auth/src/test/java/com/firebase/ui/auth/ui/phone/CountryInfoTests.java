@@ -17,12 +17,11 @@
  */
 package com.firebase.ui.auth.ui.phone;
 
-import com.firebase.ui.auth.BuildConfig;
-import com.firebase.ui.auth.testhelpers.CustomRobolectricGradleTestRunner;
+import com.firebase.ui.auth.data.model.CountryInfo;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.annotation.Config;
+import org.robolectric.RobolectricTestRunner;
 
 import java.util.Locale;
 
@@ -30,8 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 
-@RunWith(CustomRobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 25)
+@RunWith(RobolectricTestRunner.class)
 public class CountryInfoTests {
     private static final Locale COUNTRY_NAME_US = new Locale("", "US");
     private static final int COUNTRY_CODE_US = 1;
@@ -39,7 +37,7 @@ public class CountryInfoTests {
     private static final int COUNTRY_CODE_JP = 81;
 
     @Test
-    public void testEquals_differentObject() throws Exception {
+    public void testEquals_differentObject() {
         final CountryInfo countryInfo1 = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
         final CountryInfo countryInfo2 = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
 
@@ -51,21 +49,21 @@ public class CountryInfoTests {
     }
 
     @Test
-    public void testEquals_null() throws Exception {
+    public void testEquals_null() {
         final CountryInfo countryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
 
         assertFalse(countryInfo.equals(null));
     }
 
     @Test
-    public void testEquals_differentClass() throws Exception {
+    public void testEquals_differentClass() {
         final CountryInfo countryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
 
-        assertFalse(countryInfo.equals(new Integer(0)));
+        assertFalse(countryInfo.equals(0));
     }
 
     @Test
-    public void testEquals_differentCountryName() throws Exception {
+    public void testEquals_differentCountryName() {
         final CountryInfo usCountryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
         final CountryInfo bsCountryInfo = new CountryInfo(COUNTRY_NAME_BS, COUNTRY_CODE_US);
 
@@ -73,7 +71,7 @@ public class CountryInfoTests {
     }
 
     @Test
-    public void testEquals_nullCountryName() throws Exception {
+    public void testEquals_nullCountryName() {
         final CountryInfo usCountryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
         final CountryInfo bsCountryInfo = new CountryInfo(null, COUNTRY_CODE_US);
 
@@ -82,7 +80,7 @@ public class CountryInfoTests {
     }
 
     @Test
-    public void testEquals_differentCountryCode() throws Exception {
+    public void testEquals_differentCountryCode() {
         final CountryInfo usCountryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
         final CountryInfo jpCountryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_JP);
 
@@ -90,7 +88,7 @@ public class CountryInfoTests {
     }
 
     @Test
-    public void testHashCode() throws Exception {
+    public void testHashCode() {
         final CountryInfo usCountryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
         final CountryInfo bsCountryInfo = new CountryInfo(null, COUNTRY_CODE_US);
 
@@ -99,15 +97,15 @@ public class CountryInfoTests {
     }
 
     @Test
-    public void testToString() throws Exception {
+    public void testToString() {
         final CountryInfo usCountryInfo = new CountryInfo(COUNTRY_NAME_US, COUNTRY_CODE_US);
         int firstLetter = 'U' - 0x41 + 0x1F1E6;
         int secondLetter = 'S' - 0x41 + 0x1F1E6;
         String expected = new String(Character.toChars(firstLetter))
                 + new String(Character.toChars(secondLetter))
                 + " "
-                + usCountryInfo.locale.getDisplayCountry()
-                + " +" + usCountryInfo.countryCode;
-        assertEquals(expected.toString(), usCountryInfo.toString());
+                + usCountryInfo.getLocale().getDisplayCountry()
+                + " +" + usCountryInfo.getCountryCode();
+        assertEquals(expected, usCountryInfo.toString());
     }
 }

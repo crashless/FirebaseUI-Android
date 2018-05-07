@@ -23,13 +23,14 @@ import android.widget.ArrayAdapter;
 import android.widget.SectionIndexer;
 
 import com.firebase.ui.auth.R;
+import com.firebase.ui.auth.data.model.CountryInfo;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 
-/*
+/**
  * Array adapter used to display a list of countries with section indices.
  */
 final class CountryListAdapter extends ArrayAdapter<CountryInfo> implements SectionIndexer {
@@ -38,7 +39,7 @@ final class CountryListAdapter extends ArrayAdapter<CountryInfo> implements Sect
     private String[] sections;
 
     public CountryListAdapter(Context context) {
-        super(context, R.layout.dgts__country_row, android.R.id.text1);
+        super(context, R.layout.fui_dgts_country_row, android.R.id.text1);
     }
 
     // The list of countries should be sorted using locale-sensitive string comparison
@@ -46,13 +47,15 @@ final class CountryListAdapter extends ArrayAdapter<CountryInfo> implements Sect
         // Create index and add entries to adapter
         int index = 0;
         for (CountryInfo countryInfo : countries) {
-            final String key = countryInfo.locale.getDisplayCountry().substring(0, 1).toUpperCase
-                    (Locale.getDefault());
+            final String key = countryInfo.getLocale()
+                    .getDisplayCountry()
+                    .substring(0, 1)
+                    .toUpperCase(Locale.getDefault());
 
             if (!alphaIndex.containsKey(key)) {
                 alphaIndex.put(key, index);
             }
-            countryPosition.put(countryInfo.locale.getDisplayCountry(), index);
+            countryPosition.put(countryInfo.getLocale().getDisplayCountry(), index);
 
             index++;
             add(countryInfo);

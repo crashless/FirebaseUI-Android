@@ -22,6 +22,7 @@ import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.RuntimeExecutionException;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 
@@ -32,6 +33,14 @@ public class AutoCompleteTask<TResult> extends Task<TResult> {
     private boolean mComplete;
     private boolean mSuccess;
     private Exception mException;
+
+    public static <TResult> AutoCompleteTask<TResult> forSuccess(TResult result) {
+        return new AutoCompleteTask<>(result, true, null);
+    }
+
+    public static <TResult> AutoCompleteTask<TResult> forFailure(Exception exception) {
+        return new AutoCompleteTask<>(null, true, exception);
+    }
 
     public AutoCompleteTask(TResult result, boolean complete, @Nullable Exception exception) {
         mResult = result;
@@ -51,8 +60,17 @@ public class AutoCompleteTask<TResult> extends Task<TResult> {
     }
 
     @Override
+    public boolean isCanceled() {
+        return false;
+    }
+
+    @Override
     public TResult getResult() {
-        return mResult;
+        if (mSuccess) {
+            return mResult;
+        } else {
+            throw new RuntimeExecutionException(mException);
+        }
     }
 
     @Nullable
@@ -89,7 +107,7 @@ public class AutoCompleteTask<TResult> extends Task<TResult> {
     @NonNull
     @Override
     public Task<TResult> addOnSuccessListener(@NonNull Activity activity,
-                                              @NonNull OnSuccessListener onSuccessListener) {
+                                              @NonNull OnSuccessListener<? super TResult> onSuccessListener) {
         if (mSuccess) {
             onSuccessListener.onSuccess(mResult);
         }
@@ -124,14 +142,36 @@ public class AutoCompleteTask<TResult> extends Task<TResult> {
     public <TContinuationResult> Task<TContinuationResult> continueWith(
             @NonNull Continuation<TResult, TContinuationResult> continuation) {
         try {
-            return Tasks.forResult(continuation.then(Tasks.forResult(mResult)));
+            return Tasks.forResult(continuation.then(this));
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            return Tasks.forException(unwrap(e));
+        }
+    }
+
+    @NonNull
+    @Override
+    public <TContinuationResult> Task<TContinuationResult> continueWithTask(
+            @NonNull Continuation<TResult, Task<TContinuationResult>> continuation) {
+        try {
+            return continuation.then(this);
+        } catch (Exception e) {
+            return Tasks.forException(unwrap(e));
         }
     }
 
     @Override
     public TResult getResult(@NonNull Class aClass) throws Throwable {
-        throw new RuntimeException("Method not implemented");
+        if (mSuccess) {
+            return mResult;
+        } else {
+            throw mException;
+        }
+    }
+
+    private static Exception unwrap(Exception e) {
+        if (e instanceof RuntimeExecutionException && e.getCause() instanceof Exception) {
+            return (Exception) e.getCause();
+        }
+        return e;
     }
 }

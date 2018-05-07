@@ -14,6 +14,8 @@
 
 package com.firebase.ui.auth.testhelpers;
 
+import android.os.Parcel;
+
 import com.google.firebase.auth.AdditionalUserInfo;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseUser;
@@ -21,17 +23,35 @@ import com.google.firebase.auth.FirebaseUser;
 public final class FakeAuthResult implements AuthResult {
     public static final AuthResult INSTANCE = new FakeAuthResult();
 
-    private FakeAuthResult() {
-        // Singleton
-    }
+    private FirebaseUser mUser;
+
+    // Singleton
+    private FakeAuthResult() {}
 
     @Override
     public FirebaseUser getUser() {
-        return AuthHelperShadow.getCurrentUser();
+        // TODO(samstern): This method should just call AuthHelperShadow.getCurrentUser(),
+        //                 but it fails
+
+        if (mUser == null) {
+            mUser = TestHelper.getMockFirebaseUser();
+        }
+
+        return mUser;
     }
 
     @Override
     public AdditionalUserInfo getAdditionalUserInfo() {
         return null;
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel parcel, int i) {
+        throw new IllegalStateException("Don't try to parcel FakeAuthResult!");
     }
 }

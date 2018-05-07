@@ -14,6 +14,7 @@
 
 package com.firebase.ui.auth;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -22,40 +23,63 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 import android.text.TextUtils;
 
-import com.firebase.ui.auth.ui.ExtraConstants;
-import com.google.firebase.auth.FacebookAuthProvider;
-import com.google.firebase.auth.GithubAuthProvider;
+import com.firebase.ui.auth.data.model.User;
+import com.firebase.ui.auth.util.ExtraConstants;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.auth.TwitterAuthProvider;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 
 /**
  * A container that encapsulates the result of authenticating with an Identity Provider.
  */
 public class IdpResponse implements Parcelable {
-    private final String mProviderId;
-    private final String mEmail;
-    private final String mPhoneNumber;
+    public static final Creator<IdpResponse> CREATOR = new Creator<IdpResponse>() {
+        @Override
+        public IdpResponse createFromParcel(Parcel in) {
+            return new IdpResponse(
+                    in.<User>readParcelable(User.class.getClassLoader()),
+                    in.readString(),
+                    in.readString(),
+                    (FirebaseUiException) in.readSerializable()
+            );
+        }
+
+        @Override
+        public IdpResponse[] newArray(int size) {
+            return new IdpResponse[size];
+        }
+    };
+
+    private final User mUser;
+
     private final String mToken;
     private final String mSecret;
-    private final int mErrorCode;
 
-    private IdpResponse(int errorCode) {
-        this(null, null, null, null, null, errorCode);
+    private final FirebaseUiException mException;
+
+    private IdpResponse(@NonNull FirebaseUiException e) {
+        this(null, null, null, e);
     }
 
     private IdpResponse(
-            String providerId,
-            String email,
-            String phoneNumber,
+            @NonNull User user,
+            @Nullable String token,
+            @Nullable String secret) {
+        this(user, token, secret, null);
+    }
+
+    private IdpResponse(
+            User user,
             String token,
             String secret,
-            int errorCode) {
-        mProviderId = providerId;
-        mEmail = email;
-        mPhoneNumber = phoneNumber;
+            FirebaseUiException e) {
+        mUser = user;
         mToken = token;
         mSecret = secret;
-        mErrorCode = errorCode;
+        mException = e;
     }
 
     /**
@@ -65,31 +89,55 @@ public class IdpResponse implements Parcelable {
      * @return The IdpResponse containing the token(s) from signing in with the Idp
      */
     @Nullable
-    public static IdpResponse fromResultIntent(Intent resultIntent) {
+    public static IdpResponse fromResultIntent(@Nullable Intent resultIntent) {
         if (resultIntent != null) {
-            return resultIntent.getParcelableExtra(ExtraConstants.EXTRA_IDP_RESPONSE);
+            return resultIntent.getParcelableExtra(ExtraConstants.IDP_RESPONSE);
         } else {
             return null;
         }
     }
 
+    @NonNull
     @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
-    public static Intent getErrorCodeIntent(int errorCode) {
-        return new IdpResponse(errorCode).toIntent();
+    public static IdpResponse from(@NonNull Exception e) {
+        if (e instanceof FirebaseUiException) {
+            return new IdpResponse((FirebaseUiException) e);
+        } else {
+            FirebaseUiException wrapped = new FirebaseUiException(ErrorCodes.UNKNOWN_ERROR, e);
+            wrapped.setStackTrace(e.getStackTrace());
+            return new IdpResponse(wrapped);
+        }
+    }
+
+    @NonNull
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public static Intent getErrorIntent(@NonNull Exception e) {
+        return from(e).toIntent();
+    }
+
+    @NonNull
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public Intent toIntent() {
+        return new Intent().putExtra(ExtraConstants.IDP_RESPONSE, this);
     }
 
     @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
-    public Intent toIntent() {
-        return new Intent().putExtra(ExtraConstants.EXTRA_IDP_RESPONSE, this);
+    public boolean isSuccessful() {
+        return mException == null;
+    }
+
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public User getUser() {
+        return mUser;
     }
 
     /**
-     * Get the type of provider. e.g. {@link AuthUI#GOOGLE_PROVIDER}
+     * Get the type of provider. e.g. {@link GoogleAuthProvider#PROVIDER_ID}
      */
     @NonNull
     @AuthUI.SupportedProvider
     public String getProviderType() {
-        return mProviderId;
+        return mUser.getProviderId();
     }
 
     /**
@@ -97,7 +145,7 @@ public class IdpResponse implements Parcelable {
      */
     @Nullable
     public String getEmail() {
-        return mEmail;
+        return mUser.getEmail();
     }
 
     /**
@@ -105,7 +153,7 @@ public class IdpResponse implements Parcelable {
      */
     @Nullable
     public String getPhoneNumber() {
-        return mPhoneNumber;
+        return mUser.getPhoneNumber();
     }
 
     /**
@@ -126,9 +174,24 @@ public class IdpResponse implements Parcelable {
 
     /**
      * Get the error code for a failed sign in
+     *
+     * @deprecated use {@link #getError()} instead
      */
+    @Deprecated
     public int getErrorCode() {
-        return mErrorCode;
+        if (isSuccessful()) {
+            return Activity.RESULT_OK;
+        } else {
+            return mException.getErrorCode();
+        }
+    }
+
+    /**
+     * Get the error for a failed sign in.
+     */
+    @Nullable
+    public FirebaseUiException getError() {
+        return mException;
     }
 
     @Override
@@ -138,50 +201,75 @@ public class IdpResponse implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(mProviderId);
-        dest.writeString(mEmail);
-        dest.writeString(mPhoneNumber);
+        dest.writeParcelable(mUser, flags);
         dest.writeString(mToken);
         dest.writeString(mSecret);
-        dest.writeInt(mErrorCode);
+
+        ObjectOutputStream oos = null;
+        try {
+            oos = new ObjectOutputStream(new ByteArrayOutputStream());
+            oos.writeObject(mException);
+
+            // Success! The entire exception tree is serializable.
+            dest.writeSerializable(mException);
+        } catch (IOException e) {
+            // Somewhere down the line, the exception is holding on to an object that isn't
+            // serializable so default to some exception. It's the best we can do in this case.
+            FirebaseUiException fake = new FirebaseUiException(ErrorCodes.UNKNOWN_ERROR,
+                    "Fake exception created, original: " + mException
+                            + ", original cause: " + mException.getCause());
+            fake.setStackTrace(mException.getStackTrace());
+            dest.writeSerializable(fake);
+        } finally {
+            if (oos != null) {
+                try {
+                    oos.close();
+                } catch (IOException ignored) {}
+            }
+        }
     }
 
-    public static final Creator<IdpResponse> CREATOR = new Creator<IdpResponse>() {
-        @Override
-        public IdpResponse createFromParcel(Parcel in) {
-            return new IdpResponse(
-                    in.readString(),
-                    in.readString(),
-                    in.readString(),
-                    in.readString(),
-                    in.readString(),
-                    in.readInt()
-            );
-        }
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-        @Override
-        public IdpResponse[] newArray(int size) {
-            return new IdpResponse[size];
-        }
-    };
+        IdpResponse response = (IdpResponse) o;
+
+        return (mUser == null ? response.mUser == null : mUser.equals(response.mUser))
+                && (mToken == null ? response.mToken == null : mToken.equals(response.mToken))
+                && (mSecret == null ? response.mSecret == null : mSecret.equals(response.mSecret))
+                && (mException == null ? response.mException == null : mException.equals(response.mException));
+    }
+
+    @Override
+    public int hashCode() {
+        int result = mUser == null ? 0 : mUser.hashCode();
+        result = 31 * result + (mToken == null ? 0 : mToken.hashCode());
+        result = 31 * result + (mSecret == null ? 0 : mSecret.hashCode());
+        result = 31 * result + (mException == null ? 0 : mException.hashCode());
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "IdpResponse{" +
+                "mUser=" + mUser +
+                ", mToken='" + mToken + '\'' +
+                ", mSecret='" + mSecret + '\'' +
+                ", mException=" + mException +
+                '}';
+    }
 
     @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
     public static class Builder {
-        private String mProviderId;
-        private String mEmail;
-        private String mPhoneNumber;
+        private final User mUser;
+
         private String mToken;
         private String mSecret;
 
-        public Builder(@AuthUI.SupportedProvider @NonNull String providerId,
-                       @Nullable String email) {
-            mProviderId = providerId;
-            mEmail = email;
-        }
-
-        public Builder setPhoneNumber(String phoneNumber) {
-            mPhoneNumber = phoneNumber;
-            return this;
+        public Builder(@NonNull User user) {
+            mUser = user;
         }
 
         public Builder setToken(String token) {
@@ -195,22 +283,21 @@ public class IdpResponse implements Parcelable {
         }
 
         public IdpResponse build() {
-            if ((mProviderId.equalsIgnoreCase(GoogleAuthProvider.PROVIDER_ID)
-                    || mProviderId.equalsIgnoreCase(FacebookAuthProvider.PROVIDER_ID)
-                    || mProviderId.equalsIgnoreCase(TwitterAuthProvider.PROVIDER_ID)
-                    || mProviderId.equalsIgnoreCase(GithubAuthProvider.PROVIDER_ID))
-                    && TextUtils.isEmpty(mToken)) {
+            String providerId = mUser.getProviderId();
+            if (!AuthUI.SUPPORTED_PROVIDERS.contains(providerId)) {
+                throw new IllegalStateException("Unknown provider: " + providerId);
+            }
+            if (AuthUI.SOCIAL_PROVIDERS.contains(providerId) && TextUtils.isEmpty(mToken)) {
                 throw new IllegalStateException(
                         "Token cannot be null when using a non-email provider.");
             }
-            if (mProviderId.equalsIgnoreCase(TwitterAuthProvider.PROVIDER_ID)
+            if (providerId.equals(TwitterAuthProvider.PROVIDER_ID)
                     && TextUtils.isEmpty(mSecret)) {
                 throw new IllegalStateException(
                         "Secret cannot be null when using the Twitter provider.");
             }
 
-            return new IdpResponse(
-                    mProviderId, mEmail, mPhoneNumber, mToken, mSecret, ResultCodes.OK);
+            return new IdpResponse(mUser, mToken, mSecret);
         }
     }
 }

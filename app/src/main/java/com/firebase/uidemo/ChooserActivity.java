@@ -16,6 +16,7 @@ package com.firebase.uidemo;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -26,7 +27,8 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.firebase.uidemo.auth.AuthUiActivity;
-import com.firebase.uidemo.database.ChatActivity;
+import com.firebase.uidemo.database.firestore.FirestoreChatActivity;
+import com.firebase.uidemo.database.realtime.RealtimeDbChatActivity;
 import com.firebase.uidemo.storage.ImageActivity;
 
 import butterknife.BindView;
@@ -37,7 +39,7 @@ public class ChooserActivity extends AppCompatActivity {
     RecyclerView mActivities;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chooser);
         ButterKnife.bind(this);
@@ -49,21 +51,24 @@ public class ChooserActivity extends AppCompatActivity {
 
     private static class ActivityChooserAdapter extends RecyclerView.Adapter<ActivityStarterHolder> {
         private static final Class[] CLASSES = new Class[]{
-                ChatActivity.class,
                 AuthUiActivity.class,
+                FirestoreChatActivity.class,
+                RealtimeDbChatActivity.class,
                 ImageActivity.class,
         };
 
         private static final int[] DESCRIPTION_NAMES = new int[]{
-                R.string.name_chat,
-                R.string.name_auth_ui,
-                R.string.name_image
+                R.string.title_auth_activity,
+                R.string.title_firestore_activity,
+                R.string.title_realtime_database_activity,
+                R.string.title_storage_activity
         };
 
         private static final int[] DESCRIPTION_IDS = new int[]{
-                R.string.desc_chat,
-                R.string.desc_auth_ui,
-                R.string.desc_image
+                R.string.desc_auth,
+                R.string.desc_firestore,
+                R.string.desc_realtime_database,
+                R.string.desc_storage
         };
 
         @Override
@@ -92,8 +97,8 @@ public class ChooserActivity extends AppCompatActivity {
 
         public ActivityStarterHolder(View itemView) {
             super(itemView);
-            mTitle = (TextView) itemView.findViewById(R.id.text1);
-            mDescription = (TextView) itemView.findViewById(R.id.text2);
+            mTitle = itemView.findViewById(R.id.text1);
+            mDescription = itemView.findViewById(R.id.text2);
         }
 
         private void bind(Class aClass, @StringRes int name, @StringRes int description) {

@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -13,8 +14,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
-import com.firebase.ui.storage.images.FirebaseImageLoader;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.firebase.uidemo.BuildConfig;
 import com.firebase.uidemo.R;
 import com.firebase.uidemo.util.SignInResultNotifier;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -54,7 +55,7 @@ public class ImageActivity extends AppCompatActivity implements EasyPermissions.
     ImageView mImageView;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image);
         ButterKnife.bind(this);
@@ -109,9 +110,10 @@ public class ImageActivity extends AppCompatActivity implements EasyPermissions.
                 .addOnSuccessListener(this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
                     @Override
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        //noinspection LogConditional
-                        Log.d(TAG, "uploadPhoto:onSuccess:" +
-                                taskSnapshot.getMetadata().getReference().getPath());
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "uploadPhoto:onSuccess:" +
+                                    taskSnapshot.getMetadata().getReference().getPath());
+                        }
                         Toast.makeText(ImageActivity.this, "Image uploaded",
                                        Toast.LENGTH_SHORT).show();
 
@@ -131,11 +133,11 @@ public class ImageActivity extends AppCompatActivity implements EasyPermissions.
     @OnClick(R.id.button_download_direct)
     protected void downloadDirect() {
         // Download directly from StorageReference using Glide
-        Glide.with(this)
-                .using(new FirebaseImageLoader())
+        // (See MyAppGlideModule for Loader registration)
+        GlideApp.with(this)
                 .load(mImageRef)
                 .centerCrop()
-                .crossFade()
+                .transition(DrawableTransitionOptions.withCrossFade())
                 .into(mImageView);
     }
 
@@ -154,19 +156,19 @@ public class ImageActivity extends AppCompatActivity implements EasyPermissions.
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String[] permissions,
-                                           int[] grantResults) {
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
     }
 
     @Override
-    public void onPermissionsGranted(int requestCode, List<String> perms) {
+    public void onPermissionsGranted(int requestCode, @NonNull List<String> perms) {
         // See #choosePhoto with @AfterPermissionGranted
     }
 
     @Override
-    public void onPermissionsDenied(int requestCode, List<String> perms) {
+    public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
         if (EasyPermissions.somePermissionPermanentlyDenied(this,
                                                             Collections.singletonList(PERMS))) {
             new AppSettingsDialog.Builder(this).build().show();
